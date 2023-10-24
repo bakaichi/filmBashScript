@@ -1,0 +1,194 @@
+#!/bin/bash
+
+#Author: Aidas Vaiciunas 16340433
+
+#System Description:
+
+display_choices() {
+  echo ""
+  echo "The following films are currently on the database: "
+  echo ""
+  awk '{if (NF > 2) {for (i=2; i<=NF-1; i++) printf "%s ", $i; print ""} else {print $3}}' filmDatabase.txt
+}
+
+search_for_film() {
+  while true; do
+    read -p "Enter the film title: " title
+    filter=$(grep -i "$title" filmDatabase.txt)
+    if [ -z "$filter" ]; then
+      sleep 0.25
+      echo "****"
+      echo "Film title was not found."
+      echo "****"
+    else
+      year=$(echo "$filter" | awk '{print $1}')
+      title=$(echo "$filter" | awk '{for (i=2; i<=NF-1; i++) printf "%s ", $i}')
+      rating=$(echo "$filter" | awk '{print $NF}')
+      echo "****"
+      echo "Search Successful!!"
+      echo "****"
+      echo ""
+      echo "Year of release: $year"
+      echo ""
+      echo "Title: $title"
+      echo ""
+      echo "Rating: $rating"
+      echo ""
+
+      while true; do
+        read -p "Would you like to (s)earch again, return to (m)ain menu, or (e)xit? " action
+	echo ""
+        case $action in
+          S|s)
+            break  # Allow another search
+            ;;
+          M|m)
+            return  # Return to the main menu
+            ;;
+          E|e)
+	    echo ""
+	    echo "****"
+            echo "Exiting the script. Goodbye!"
+	    echo "****"
+	    sleep 0.3
+            exit 0
+            ;;
+          *)
+	    echo "****"
+            echo "Invalid option selected. Returning to main menu."
+	    echo "****"
+	    echo ""
+            sleep 0.3
+            return  # Return to the main menu
+            ;;
+        esac
+      done
+    fi
+  done
+}
+
+add_film() {
+  while true; do
+    echo ""
+    read -p "Enter the year (YYYY) or use 'M or m' to return to main menu': " year
+
+    if [[ $year =~ ^[Mm]$ ]]; then
+      echo ""
+      echo "Returning to the main menu"
+      return
+    fi
+
+    # Check if the year is in the correct format (four digits)
+    if [[ ! $year =~ ^[0-9]{4}$ ]]; then
+      echo "Enter the year in YYYY format (e.g., 1998). Please try again."
+      continue  # Continue the loop
+    else
+      # Check for a valid year
+      if (( $year < 1888 )); then # fun fact: first film ever made was in 1888
+        echo "There were no films created prior to 1888. Please enter a valid year."
+        continue  # Continue the loop 
+      else
+        read -p "Enter the film title: " title
+
+        while true; do
+          read -p "Rate the film (1-10): " rating
+
+          # Check if the rating is a single digit from 1 to 10
+          if [[ ! $rating =~ ^[1-9]$|^10$ ]]; then
+            echo "Rating must be a single digit from 1-10 and no special characters such as '/'. Please try again."
+          else
+            # Add the new film to the database with a blank line below
+            echo "$year $title $rating/10" >> filmDatabase.txt
+            echo ""
+            echo "Film added successfully!"
+            break  # Exit the inner loop
+          fi
+        done
+        break  # Exit the outer loop
+      fi
+    fi
+  done
+}
+
+# deleting the film by title 
+delete_film_by_title() {
+  echo ""
+  read -p "Enter the full title of the film you would like to delete (case insensitive): " title
+  # bug fix where the whole database is wiped if user presses `enter` without any title entered
+  if [[ -z "$title" ]]; then
+    echo ""
+    echo "****"
+    echo "Film title cannot be empty. Deletion process aborted."
+    echo "****"
+    echo ""
+    return
+  fi
+  # Creating a temp file to store the updated db
+  tmp_file="filmDB_tmp.txt"
+
+  if grep -q -i "$title" filmDatabase.txt; then
+    grep -v -i "$title" filmDatabase.txt > "$tmp_file"
+    mv "$tmp_file" filmDatabase.txt
+    echo ""
+    echo "Film title: '$title' has been deleted successfully."
+  else
+    echo ""
+    echo "Film title: '$title' was not found in the database. Script terminated."
+    rm "$tmp_file"
+    return
+  fi
+}
+
+remove_duplicate_titles() {
+  # searching for film title and year ignoring the rating
+  # combines the year & title into one string and convert to lowercase, check if year and title match
+  awk '{year_title=$1; for (i=2; i<=NF-1; i++) year_title = year_title " " tolower($i); if (!seen[tolower(year_title)]) {print; seen[tolower(year_title)]=1}}' filmDatabase.txt > temp.txt
+  mv temp.txt filmDatabase.txt
+
+echo "Duplicate entries removed from the database."
+}
+
+
+# Main menu loop
+while true; do
+  echo ""
+  echo ""
+  echo "Welcome to the Film Watchlist tracker"
+  echo "1) Display all the film titles currently on the database"
+  echo "2) Search for a film on the database"
+  echo "3) Add a film to the database"
+  echo "4) Delete film by title"
+  echo "  a) Remove duplicate film titles based on year and title"
+  echo "5) Exit the script"
+
+  read -p "Enter your choice (1/2/3/4/5): " choice
+
+  case $choice in
+    1)
+      display_choices
+      ;;
+    2)
+      search_for_film
+      ;;
+    3)
+      add_film
+      ;;
+    4)
+      delete_film_by_title
+      ;;
+    5) 
+      echo ""
+      echo ""
+      echo "Exiting the script. Goodbye!"
+      echo ""
+      sleep 0.3
+      exit 0
+      ;;
+    a)
+      remove_duplicate_titles
+      ;;
+    *)
+      echo "Invalid choice. Please enter a valid option (1/2/3/4)."
+      ;;
+  esac
+done

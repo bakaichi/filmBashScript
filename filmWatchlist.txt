@@ -2,11 +2,15 @@
 
 #Author: Aidas Vaiciunas 16340433
 
-#System Description:
-
+#System Description: this is a simple porgram that is intended to be used as a sort of film watchlist, films can be added & removed to/from the database and you can store -
+#       the year of production, full film title andv the rating the user has given for the film. Duplicate films and individual films can be removed via using the menu once the script is ran in the shell.
+# youtube link: https://youtu.be/NjaWkTeyyAA
 display_choices() {
   echo ""
   echo "The following films are currently on the database: "
+  echo ""
+  echo "The current unique film count is: " 
+  cat filmDatabase.txt | wc -l
   echo ""
   awk '{if (NF > 2) {for (i=2; i<=NF-1; i++) printf "%s ", $i; print ""} else {print $3}}' filmDatabase.txt
 }
@@ -20,6 +24,28 @@ search_for_film() {
       echo "****"
       echo "Film title was not found."
       echo "****"
+      read -p "Would you like to (s)earch again, return to (m)ain menu, or (e)xit? " action
+
+      case $action in
+	S|s)
+	  # another search
+	  ;;
+	  M|m)
+	    return
+	    ;;
+	  E|e)
+	    echo ""
+	    echo "****"
+	    echo "Exiting the script. Goodbye!"
+	    echo "****"
+	    sleep 0.3
+  	    exit 0
+	    ;;
+	  *)
+            echo "Invalid option. Choose (s), (m) or (e)"
+	    ;;
+	esac
+
     else
       year=$(echo "$filter" | awk '{print $1}')
       title=$(echo "$filter" | awk '{for (i=2; i<=NF-1; i++) printf "%s ", $i}')
@@ -90,6 +116,13 @@ add_film() {
       else
         read -p "Enter the film title: " title
 
+	# check to ensure title was not left empty
+	if [[ -z $title ]]; then 
+	  echo ""
+	  echo "The film title cannot be left empty"
+	  continue 
+	fi
+
         while true; do
           read -p "Rate the film (1-10): " rating
 
@@ -144,7 +177,7 @@ remove_duplicate_titles() {
   # combines the year & title into one string and convert to lowercase, check if year and title match
   awk '{year_title=$1; for (i=2; i<=NF-1; i++) year_title = year_title " " tolower($i); if (!seen[tolower(year_title)]) {print; seen[tolower(year_title)]=1}}' filmDatabase.txt > temp.txt
   mv temp.txt filmDatabase.txt
-
+echo ""
 echo "Duplicate entries removed from the database."
 }
 
